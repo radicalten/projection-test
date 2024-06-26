@@ -45,10 +45,10 @@ static void load_texture()
 static void draw_square()
 {
     GX_Begin(GX_QUADS, GX_VTXFMT0, 4);
-    GX_Position2s16(-1, -1);
-    GX_Position2s16(-1, 1);
-    GX_Position2s16(1, 1);
-    GX_Position2s16(1, -1);
+    GX_Position2s16(-2, -2);
+    GX_Position2s16(-2, 2);
+    GX_Position2s16(2, 2);
+    GX_Position2s16(2, -2);
     GX_End();
 }
 
@@ -62,6 +62,7 @@ static void setup_viewport()
     printf("width %d, height %d\n", w, h);
     // matrix, t, b, l, r, n, f
     guPerspective(proj, 45, (f32)w/h, 0.1F, 300.0F);
+    //guOrtho(proj, 1, -2, -1, 2, 0.1F, 300.0F);
     GX_LoadProjectionMtx(proj, GX_PERSPECTIVE);
 
     GX_SetViewport(0, 0, w, h, 0, 1);
@@ -119,16 +120,19 @@ int main(int argc, char **argv) {
     GX_SetVtxDesc(GX_VA_POS, GX_DIRECT);
     GX_SetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_S16, 0);
 
-    //GX_SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_CLEAR);
-
     GX_SetPixelFmt(GX_PF_RGB8_Z24, GX_ZC_LINEAR);
     GXColor backgroundColor = {255, 0, 0, 255};
     GX_SetCopyClear(backgroundColor, GX_MAX_Z24);
 
     GX_SetNumChans(0);
     GX_SetNumTexGens(1);
-    GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
-    //GX_SetTexCoordGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+    Mtx pm = {
+        {-0.5, 0, 0.5, 0},
+        {0, 0.5, 0.5, 0},
+        {0, 0, 1, 0},
+    };
+    GX_LoadTexMtxImm(pm, GX_DTTMTX0, GX_MTX3x4);
+    GX_SetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0, GX_FALSE, GX_DTTMTX0);
     GX_SetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
     GX_SetTevOp(GX_TEVSTAGE0, GX_REPLACE);
 
@@ -142,19 +146,26 @@ int main(int argc, char **argv) {
     guLookAt(view, &cam, &up, &look);
 
     float rtri = 0.0f;
+    guVector Xaxis = {1,0,0};
     guVector Yaxis = {0,1,0};
+    guVector Zaxis = {0,0,1};
 	while(1) {
-        Mtx model, modelview;
+        Mtx model, modelview, rot;
         guMtxIdentity(model);
         guMtxRotAxisDeg(model, &Yaxis, rtri);
-        guMtxTransApply(model, model, 0.0f,0.0f,-2.0f);
+        guMtxRotAxisDeg(rot, &Xaxis, rtri);
+        guMtxConcat(rot,model,model);
+        guMtxRotAxisDeg(rot, &Zaxis, rtri);
+        guMtxConcat(rot,model,model);
+        guMtxTransApply(model, model, 0.0f,0.0f,-6.0f);
         guMtxConcat(view,model,modelview);
         // load the modelview matrix into matrix memory
         GX_LoadPosMtxImm(modelview, GX_PNMTX0);
 
-        Mtx m;
-        guMtxIdentity(m);
-        guMtxTransApply(m, m, 1, 1, 0);
+        Mtx m, trans;
+        guMtxCopy(modelview, m);
+        guMtxScale(trans, proj[0][0], proj[1][1], 1);
+        guMtxConcat(trans, m, m);
         GX_LoadTexMtxImm(m, GX_TEXMTX0, GX_MTX3x4);
         draw_square();
 
