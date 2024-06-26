@@ -126,10 +126,13 @@ int main(int argc, char **argv) {
 
     GX_SetNumChans(0);
     GX_SetNumTexGens(1);
+    /* QUESTION: why does this matrix has 0.5 on the third column (which should
+     * be for the Z or Q coordinate) and not +1 on the last column (which
+     * should be for the translation)? */
     Mtx pm = {
-        {-0.5, 0, 0.5, 0},
-        {0, 0.5, 0.5, 0},
-        {0, 0, 1, 0},
+        {-0.5,   0, 0.5, 0},
+        {0,    0.5, 0.5, 0},
+        {0,      0,   1, 0},
     };
     GX_LoadTexMtxImm(pm, GX_DTTMTX0, GX_MTX3x4);
     GX_SetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0, GX_FALSE, GX_DTTMTX0);
@@ -164,6 +167,11 @@ int main(int argc, char **argv) {
 
         Mtx m, trans;
         guMtxCopy(modelview, m);
+        /* QUESTION: instead of just taking the 00 and 11 elements from the
+         * projection matrix, shouldn't we multiply by it?
+         *
+         * guMtxConcat(proj, m, m);
+         */
         guMtxScale(trans, proj[0][0], proj[1][1], 1);
         guMtxConcat(trans, m, m);
         GX_LoadTexMtxImm(m, GX_TEXMTX0, GX_MTX3x4);
